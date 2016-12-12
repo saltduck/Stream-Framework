@@ -112,6 +112,12 @@ class RedisTimelineStorage(BaseTimelineStorage):
     def remove_from_storage(self, key, activities, batch_interface=None):
         cache = self.get_cache(key)
         results = cache.remove_many(activities.values())
+        if sum(results) == 0:   # failed
+            results = []
+            for aid, activity in activities.items():
+                for s in cache.redis.zrangebyscore(key, aid, aid):
+                    if self.serializer.loads(s) == self.serializer.loads(activity):
+                        results.append(cache.redis.zrem(key, s))
         return results
 
     def count(self, key):
